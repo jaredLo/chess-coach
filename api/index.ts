@@ -103,14 +103,22 @@ app.post('/analyze', async (req: any, res: any) => {
 
   const isUserMove = userColor === (moveIndex % 2 === 1 ? 'w' : 'b');
   const prompt = isUserMove
-    ? `I played ${actualMove}. Engine best move was: ${prevBest}. Eval now: ${evaluation}. Give concise advice.`
-    : `My opponent played ${actualMove}. Engine best move was: ${prevBest}. Eval now: ${evaluation}. Give concise analysis what the opponent is doing.`;
-
+  ? `I played ${actualMove}. Engine best move: ${prevBest} (eval ${evaluation}).`
+  : `Opponent played ${actualMove}. Engine best move: ${prevBest} (eval ${evaluation}).`;
   console.log('prompt', prompt);
   const chat = await openai.chat.completions.create({
     model: 'openai/gpt-4.1-nano',
     messages: [
-      { role: 'system', content: 'You are my chess coach speaking in first person. Be concise and actionable.' },
+      { role: 'system',   content: [
+        "You're my chess coach, like Chess.com's AI Coach.",
+        "Each move alternates strictly between me and my opponent.",
+        "Explicitly say 'You' when addressing my moves, and 'Your opponent' when addressing theirs.",
+        "Give exactly two short lines per response:",
+        "1) Describe clearly what was played (e.g., 'You played e4.', 'Your opponent played e5.').",
+        "2) If the move matches engine suggestion, briefly praise it and explain why it’s good (mention eval). If not, state the better move clearly and briefly explain why (mention eval).",
+        "Highlight clear blunders if eval difference is large (±2.0 or more).",
+        "Stay under 40 words total."
+      ].join(" ") },
       { role: 'user', content: prompt }
     ],
     max_tokens: 120,

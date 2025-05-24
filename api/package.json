@@ -1,0 +1,30 @@
+{
+  "name": "api",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "ts-node --loader ts-node/esm index.ts",
+    "watch": "nodemon --watch ./ --ext ts --exec \"NODE_OPTIONS='--loader ts-node/esm' ts-node index.ts\""
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.2",
+    "@types/node": "^22.15.21",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "chess.js": "^1.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "openai": "^4.103.0",
+    "pino": "^9.7.0",
+    "zod": "^3.25.28"
+  }
+}

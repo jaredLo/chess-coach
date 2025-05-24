@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 8060;
 app.use(cors());
 app.use(express.json());
 
-// Utility: get FEN at a specific ply index (0 = start position)
+// get the FEN at a specific move number (0 = starting position)
 function getFenAtMove(pgn: string, ply: number): string {
   const temp = new Chess();
   temp.loadPgn(pgn);
@@ -32,7 +32,7 @@ function getFenAtMove(pgn: string, ply: number): string {
   return temp.fen();
 }
 
-// Convert UCI move to SAN for display
+// convert UCI move format to SAN for display
 function uciToSan(fen: string, uci: string | null): string | null {
   if (!uci) return null;
   const chess = new Chess(fen);
@@ -43,10 +43,7 @@ function uciToSan(fen: string, uci: string | null): string | null {
   return move?.san ?? null;
 }
 
-// Run Stockfish with full UCI handshake for deep analysis
-// Run Stockfish with a clean UCI handshake and fixed time search
-// Replace your entire runStockfish with this:
-
+// run stockfish with UCI protocol for analysis
 async function runStockfish(fen: string): Promise<{ bestMove: string | null; eval: number | string }> {
   return new Promise((resolve, reject) => {
     const proc = spawn("./stockfish/stockfish-macos-m1-apple-silicon", [], {
@@ -59,7 +56,7 @@ async function runStockfish(fen: string): Promise<{ bestMove: string | null; eva
     });
     proc.on("error", reject);
     proc.on("close", () => {
-      // parse final, deepest info line + bestmove
+      // parse the final analysis line and best move
       const lines = output.split("\n");
       let bestMove: string | null = null;
       let evaluation: number | string = 0;
@@ -80,11 +77,11 @@ async function runStockfish(fen: string): Promise<{ bestMove: string | null; eva
       resolve({ bestMove, eval: evaluation });
     });
 
-    // Kick off a *single* UCI session that quits after searching 2s
+    // start a single UCI session with 2s search time
     proc.stdin.write("uci\n");
     proc.stdin.write(`position fen ${fen}\n`);
     proc.stdin.write("go movetime 2000\n");
-    //wait 6 seconds
+    // give it a bit more time to finish
     setTimeout(() => {
       proc.stdin.write("quit\n");
     }, 2100);
@@ -115,7 +112,7 @@ app.post('/analyze', async (req: any, res: any) => {
         "Explicitly say 'You' when addressing my moves, and 'Your opponent' when addressing theirs.",
         "Give exactly two short lines per response:",
         "1) Describe clearly what was played (e.g., 'You played e4.', 'Your opponent played e5.').",
-        "2) If the move matches engine suggestion, briefly praise it and explain why it’s good (mention eval). If not, state the better move clearly and briefly explain why (mention eval).",
+        "2) If the move matches engine suggestion, briefly praise it and explain why it's good (mention eval). If not, state the better move clearly and briefly explain why (mention eval).",
         "Highlight clear blunders if eval difference is large (±2.0 or more).",
         "Stay under 40 words total."
       ].join(" ") },

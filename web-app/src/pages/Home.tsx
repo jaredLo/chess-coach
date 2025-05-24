@@ -24,7 +24,7 @@ const Home: React.FC = () => {
     coach.analyze(newPgn, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
   };
 
-  // Keyboard navigation
+  // keyboard navigation
   useEffect(() => {
     if (!hasPGN) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -35,12 +35,12 @@ const Home: React.FC = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [replay, hasPGN]);
 
-  // Extract player names and user color from PGN
+  // extract player names and user color from PGN
   let whitePlayer = "";
   let blackPlayer = "";
   let userColor: 'w' | 'b' | undefined = undefined;
 
-  // Call coach.analyze on every FEN change
+  // call coach.analyze on every FEN change
   useEffect(() => {
     if (
       replay.fen &&
@@ -78,10 +78,10 @@ const Home: React.FC = () => {
     whitePlayer = whiteMatch ? whiteMatch[1] : "White";
     blackPlayer = blackMatch ? blackMatch[1] : "Black";
     
-    // Set user color based on specific usernames
-    if (whitePlayer === "gerardlo12" || whitePlayer === "lacusness") {
+    const usernames = (import.meta.env.VITE_ANALYZE_USERNAMES || '').split(',').map((name: string) => name.trim());
+    if (usernames.includes(whitePlayer)) {
       userColor = 'w';
-    } else if (blackPlayer === "gerardlo12" || blackPlayer === "lacusness") {
+    } else if (usernames.includes(blackPlayer)) {
       userColor = 'b';
     }
   }

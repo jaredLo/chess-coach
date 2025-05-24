@@ -9,7 +9,6 @@ interface CoachCommentProps {
 }
 
 function highlightMoves(text: string) {
-  // Regex: move numbers, SAN, castling
   const moveRegex = /(\d+\.(?:\.\.)?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?|O-O(?:-O)?)/g;
   return text.replace(moveRegex, match => `<b>${match}</b>`);
 }

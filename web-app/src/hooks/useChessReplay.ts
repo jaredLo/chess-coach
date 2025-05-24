@@ -9,7 +9,7 @@ export function useChessReplay(pgn: string) {
   const [lastMoveSAN, setLastMoveSAN] = useState<string | null>(null);
   const [lastMoveColor, setLastMoveColor] = useState<"w" | "b" | null>(null);
 
-  // Parse PGN and set up move list
+  // parse PGN and set up move list
   useEffect(() => {
     const chess = new Chess();
     chess.loadPgn(pgn);
@@ -21,7 +21,7 @@ export function useChessReplay(pgn: string) {
     setLastMoveColor(null);
   }, [pgn]);
 
-  // Update FEN and last move when currentMove changes
+  // update FEN and last move when currentMove changes
   useEffect(() => {
     if (!chessRef.current) return;
     const chess = new Chess();

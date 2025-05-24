@@ -46,7 +46,6 @@ export function useCoachAnalysis() {
     }
   }, []);
 
-  // Debounce the fetchAdvice function
   const analyze = useCallback(debouncePromise(fetchAdvice, 300), [fetchAdvice]);
 
   return { analyze, result, loading, error };

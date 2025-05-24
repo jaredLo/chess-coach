@@ -21,7 +21,7 @@ const Home: React.FC = () => {
   const handlePGNSubmit = (newPgn: string) => {
     setPgn(newPgn);
     setHasPGN(true);
-    coach.analyze(newPgn);
+    coach.analyze(newPgn, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
   };
 
   // Keyboard navigation
@@ -42,20 +42,48 @@ const Home: React.FC = () => {
 
   // Call coach.analyze on every FEN change
   useEffect(() => {
-    if (replay.fen && hasPGN && replay.currentMove > 0) {
-      coach.analyze(replay.fen, replay.currentMove, replay.totalMoves, replay.lastMoveSAN, replay.lastMoveColor, userColor);
+    if (
+      replay.fen &&
+      hasPGN &&
+      replay.currentMove > 0 &&
+      replay.moveList[replay.currentMove - 1]
+    ) {
+      const move = replay.moveList[replay.currentMove - 1].san;
+      const color = replay.moveList[replay.currentMove - 1].color;
+      coach.analyze(
+        pgn,
+        replay.fen,
+        replay.currentMove,
+        replay.totalMoves,
+        move,
+        color,
+        userColor,
+        move,
+        undefined
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [replay.fen, replay.currentMove, replay.totalMoves, replay.lastMoveSAN, replay.lastMoveColor, hasPGN, userColor]);
+  }, [
+    replay.fen,
+    replay.currentMove,
+    replay.totalMoves,
+    replay.moveList,
+    hasPGN,
+    userColor
+  ]);
 
   if (pgn) {
     const whiteMatch = pgn.match(/\[White "([^"]+)"\]/);
     const blackMatch = pgn.match(/\[Black "([^"]+)"\]/);
     whitePlayer = whiteMatch ? whiteMatch[1] : "White";
     blackPlayer = blackMatch ? blackMatch[1] : "Black";
-    if (whitePlayer.toLowerCase().includes("gerald")) userColor = 'w';
-    else if (blackPlayer.toLowerCase().includes("gerald")) userColor = 'b';
-    else userColor = 'w';
+    
+    // Set user color based on specific usernames
+    if (whitePlayer === "gerardlo12" || whitePlayer === "lacusness") {
+      userColor = 'w';
+    } else if (blackPlayer === "gerardlo12" || blackPlayer === "lacusness") {
+      userColor = 'b';
+    }
   }
 
   let comment = "Paste a PGN and step through the moves.";
@@ -69,8 +97,15 @@ const Home: React.FC = () => {
         <Title level={3}>Chess Coach</Title>
         <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", position: "relative" }}>
           <EvalBar eval={coach.result?.stockfish?.eval} height={boardHeight} />
-          <div style={{ flex: 1 }}>
-            <ChessBoardViewer fen={replay.fen} whitePlayer={whitePlayer} blackPlayer={blackPlayer} />
+          <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <div style={{ width: boardHeight, height: boardHeight }}>
+              <ChessBoardViewer 
+                fen={replay.fen} 
+                whitePlayer={whitePlayer} 
+                blackPlayer={blackPlayer} 
+                orientation={userColor === 'b' ? 'black' : 'white'}
+              />
+            </div>
           </div>
           <CoachComment comment={comment} loading={coach.loading} moveIndex={replay.currentMove} totalMoves={replay.totalMoves} />
         </div>

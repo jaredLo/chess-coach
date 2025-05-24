@@ -5,17 +5,21 @@ interface ChessBoardViewerProps {
   fen: string;
   whitePlayer?: string;
   blackPlayer?: string;
+  orientation?: 'white' | 'black';
 }
 
-const ChessBoardViewer: React.FC<ChessBoardViewerProps> = ({ fen, whitePlayer, blackPlayer }) => {
+const ChessBoardViewer: React.FC<ChessBoardViewerProps> = ({ fen, whitePlayer, blackPlayer, orientation = 'white' }) => {
+  const topPlayer = orientation === 'white' ? blackPlayer : whitePlayer;
+  const bottomPlayer = orientation === 'white' ? whitePlayer : blackPlayer;
+
   return (
     <div style={{ maxWidth: 480, margin: "0 auto" }}>
-      {blackPlayer && (
-        <div style={{ textAlign: "center", fontWeight: 500, marginBottom: 4 }}>{blackPlayer}</div>
+      {topPlayer && (
+        <div style={{ textAlign: "center", fontWeight: 500, marginBottom: 4 }}>{topPlayer}</div>
       )}
-      <Chessboard position={fen} />
-      {whitePlayer && (
-        <div style={{ textAlign: "center", fontWeight: 500, marginTop: 4 }}>{whitePlayer}</div>
+      <Chessboard position={fen} boardOrientation={orientation} />
+      {bottomPlayer && (
+        <div style={{ textAlign: "center", fontWeight: 500, marginTop: 4 }}>{bottomPlayer}</div>
       )}
     </div>
   );

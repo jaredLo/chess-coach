@@ -19,8 +19,8 @@ export function useCoachAnalysis() {
   const [error, setError] = useState<string | null>(null);
   const cache = useRef<Map<string, any>>(new Map());
 
-  const fetchAdvice = useCallback(async (fen: string, moveIndex: number, totalMoves: number, lastMoveSAN?: string | null, lastMoveColor?: string | null, userColor?: 'w' | 'b') => {
-    const cacheKey = `${fen}|${moveIndex}|${totalMoves}|${lastMoveSAN}|${lastMoveColor}|${userColor}`;
+  const fetchAdvice = useCallback(async (pgn: string, fen: string, moveIndex: number, totalMoves: number, lastMoveSAN?: string | null, lastMoveColor?: string | null, userColor?: 'w' | 'b', actualMove?: string | null, prevBestMove?: string | null) => {
+    const cacheKey = `${fen}|${moveIndex}|${totalMoves}|${lastMoveSAN}|${lastMoveColor}|${userColor}|${actualMove}|${prevBestMove}`;
     if (cache.current.has(cacheKey)) {
       setResult(cache.current.get(cacheKey));
       setLoading(false);
@@ -33,7 +33,7 @@ export function useCoachAnalysis() {
       const res = await fetch("http://localhost:8060/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fen, moveIndex, totalMoves, lastMoveSAN, lastMoveColor, userColor })
+        body: JSON.stringify({ pgn, fen, moveIndex, totalMoves, lastMoveSAN, lastMoveColor, userColor, actualMove, prevBestMove })
       });
       if (!res.ok) throw new Error("API error");
       const data = await res.json();

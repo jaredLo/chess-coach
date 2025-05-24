@@ -22,14 +22,14 @@ function evalToPercent(evalValue: number | string | null | undefined): number {
   return 0.5;
 }
 
-const EvalBar: React.FC<EvalBarProps> = ({ eval: evalValue, height = 200 }) => {
+const EvalBar: React.FC<EvalBarProps> = ({ eval: evalValue, height = 400 }) => {
   const percent = evalToPercent(evalValue);
   const barHeight = height;
   const whiteHeight = Math.round(barHeight * percent);
   const blackHeight = barHeight - whiteHeight;
 
   return (
-    <div style={{ width: 32, height: barHeight, marginRight: 16, display: "flex", flexDirection: "column", alignItems: "center", userSelect: "none" }}>
+    <div style={{ width: 32, marginRight: 16, display: "flex", flexDirection: "column", alignItems: "center", userSelect: "none" }}>
       <div style={{ fontSize: 12, marginBottom: 4, color: "#888" }}>+{typeof evalValue === "number" ? evalValue.toFixed(2) : evalValue || "0.00"}</div>
       <div style={{ width: 16, height: barHeight, borderRadius: 8, overflow: "hidden", border: "1px solid #ccc", boxShadow: "0 1px 2px #eee" }}>
         <div style={{ height: whiteHeight, background: "#fff" }} />

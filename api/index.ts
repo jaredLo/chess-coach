@@ -44,8 +44,8 @@ app.post('/preload', async (req: any, res: any) => {
     const { pgn } = req.body;
     if (!pgn) return res.status(400).json({ error: 'pgn required' });
     try {
-        await preloadBestMoves(pgn, logger);
-        res.json({ message: 'Preloading complete' });
+        const preloadedMoves = await preloadBestMoves(pgn, logger);
+        res.json({ message: 'Preloading complete', preloadedMoves });
     } catch (error) {
         logger.error(error, 'Error during preloading');
         res.status(500).json({ error: 'Failed to preload moves' });

@@ -2,11 +2,11 @@ import React, { useEffect, useState } from "react";
 import ChessBoardViewer from "../components/ChessBoardViewer";
 import PGNInput from "../components/PGNInput";
 import Controls from "../components/Controls";
-import { Chess } from "chess.js";
 import { Card, Typography } from "antd";
 import { useChessReplay } from "../hooks/useChessReplay";
 import CoachComment from "../components/CoachComment";
 import { useCoachAnalysis } from "../hooks/useCoachAnalysis";
+import { usePreloadAnalysis } from "../hooks/usePreloadAnalysis";
 import EvalBar from "../components/EvalBar";
 
 const { Title } = Typography;
@@ -16,13 +16,19 @@ const Home: React.FC = () => {
   const [hasPGN, setHasPGN] = useState(false);
   const replay = useChessReplay(pgn);
   const coach = useCoachAnalysis();
+  const preloadedMoves = usePreloadAnalysis();
   const boardHeight = 400;
 
   const handlePGNSubmit = (newPgn: string) => {
     setPgn(newPgn);
     setHasPGN(true);
-    coach.analyze(newPgn, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    preloadedMoves.fetchPreloadedMoves(newPgn);
   };
+
+  useEffect(() => {
+    console.log('preloadedMoves', preloadedMoves.result);
+
+  }, [preloadedMoves.loading, preloadedMoves.result]);
 
   // keyboard navigation
   useEffect(() => {
@@ -77,7 +83,8 @@ const Home: React.FC = () => {
     const blackMatch = pgn.match(/\[Black "([^"]+)"\]/);
     whitePlayer = whiteMatch ? whiteMatch[1] : "White";
     blackPlayer = blackMatch ? blackMatch[1] : "Black";
-    
+
+    // determine user color based on environment variable, you should put your usernames in .env file
     const usernames = (import.meta.env.VITE_ANALYZE_USERNAMES || '').split(',').map((name: string) => name.trim());
     if (usernames.includes(whitePlayer)) {
       userColor = 'w';
@@ -99,7 +106,8 @@ const Home: React.FC = () => {
           <EvalBar eval={coach.result?.stockfish?.eval} height={boardHeight} />
           <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
             <div style={{ width: boardHeight, height: boardHeight }}>
-              <ChessBoardViewer 
+              <ChessBoardViewer
+                moves={preloadedMoves.result?.preloadedMoves  || []}
                 fen={replay.fen} 
                 whitePlayer={whitePlayer} 
                 blackPlayer={blackPlayer} 

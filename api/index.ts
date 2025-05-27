@@ -5,7 +5,14 @@ import dotenv from "dotenv";
 import { Chess } from "chess.js";
 import { spawn } from "child_process";
 import OpenAI from 'openai';
+import { execSync } from 'child_process';
+import {getFenAtMove, runStockfish, preloadBestMoves, uciToSan} from './utils/index.ts';
+const raw = execSync(
+    `printf "uci\nquit\n" | ./stockfish/stockfish-macos-m1-apple-silicon`
+).toString();
 
+const match = raw.match(/^id name (.+)$/m);
+const version = match ? match[1] : 'unknown';
 dotenv.config();
 
 const openai = new OpenAI({
@@ -15,83 +22,40 @@ const openai = new OpenAI({
 });
 
 const app = express();
-const logger = pino();
+const logger = pino({
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,                   // colored levels
+      translateTime: 'HH:MM:ss.l',      // e.g. 21:43:09.123
+      ignore: 'pid,hostname',           // ditch those fields
+      levelFirst: true,                 // [INFO] before the message
+    }
+  }
+});
+logger.info(`Stockfish version: ${version}`);
+
 const PORT = process.env.PORT || 8060;
 
 app.use(cors());
 app.use(express.json());
 
-// get the FEN at a specific move number (0 = starting position)
-function getFenAtMove(pgn: string, ply: number): string {
-  const temp = new Chess();
-  temp.loadPgn(pgn);
-  const moves = temp.history();
-  temp.reset();
-  const limit = Math.max(0, Math.min(ply, moves.length));
-  for (let i = 0; i < limit; i++) temp.move(moves[i]);
-  return temp.fen();
-}
+app.post('/preload', async (req: any, res: any) => {
+    const { pgn } = req.body;
+    if (!pgn) return res.status(400).json({ error: 'pgn required' });
+    try {
+        await preloadBestMoves(pgn, logger);
+        res.json({ message: 'Preloading complete' });
+    } catch (error) {
+        logger.error(error, 'Error during preloading');
+        res.status(500).json({ error: 'Failed to preload moves' });
+    }
+});
 
-// convert UCI move format to SAN for display
-function uciToSan(fen: string, uci: string | null): string | null {
-  if (!uci) return null;
-  const chess = new Chess(fen);
-  const from = uci.slice(0, 2);
-  const to = uci.slice(2, 4);
-  const promotion = uci.length === 5 ? uci[4] : undefined;
-  const move = chess.move({ from, to, promotion } as any);
-  return move?.san ?? null;
-}
-
-// run stockfish with UCI protocol for analysis
-async function runStockfish(fen: string): Promise<{ bestMove: string | null; eval: number | string }> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn("./stockfish/stockfish-macos-m1-apple-silicon", [], {
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    let output = "";
-
-    proc.stdout.on("data", (chunk) => {
-      output += chunk.toString();
-    });
-    proc.on("error", reject);
-    proc.on("close", () => {
-      // parse the final analysis line and best move
-      const lines = output.split("\n");
-      let bestMove: string | null = null;
-      let evaluation: number | string = 0;
-      let maxDepth = -1;
-      for (const line of lines) {
-        const bm = line.match(/bestmove\s+([a-h][1-8][a-h][1-8][qrbn]?)/);
-        if (bm) bestMove = bm[1];
-        const info = line.match(/info depth (\d+).*score (cp|mate) (-?\d+)/);
-        if (info) {
-          const depth = +info[1], type = info[2], val = +info[3];
-          if (depth > maxDepth) {
-            maxDepth = depth;
-            if (type === "mate" && val !== 0) evaluation = `#${val}`;
-            else if (type === "cp") evaluation = val / 100;
-          }
-        }
-      }
-      resolve({ bestMove, eval: evaluation });
-    });
-
-    // start a single UCI session with 2s search time
-    proc.stdin.write("uci\n");
-    proc.stdin.write(`position fen ${fen}\n`);
-    proc.stdin.write("go movetime 2000\n");
-    // give it a bit more time to finish
-    setTimeout(() => {
-      proc.stdin.write("quit\n");
-    }, 2100);
-  });
-}
 
 app.post('/analyze', async (req: any, res: any) => {
   const { pgn, moveIndex, userColor, actualMove } = req.body;
   if (!pgn || moveIndex == null) return res.status(400).json({ error: 'pgn and moveIndex required' });
-
   const prevFEN = getFenAtMove(pgn, moveIndex - 1);
   const currFEN = getFenAtMove(pgn, moveIndex);
   const { bestMove: prevUci } = await runStockfish(prevFEN);
@@ -100,22 +64,22 @@ app.post('/analyze', async (req: any, res: any) => {
 
   const isUserMove = userColor === (moveIndex % 2 === 1 ? 'w' : 'b');
   const prompt = isUserMove
-  ? `I played ${actualMove}. Engine best move: ${prevBest} (eval ${evaluation}).`
-  : `Opponent played ${actualMove}. Engine best move: ${prevBest} (eval ${evaluation}).`;
-  console.log('prompt', prompt);
+      ? `I played ${actualMove}. Engine best move: ${prevBest} (eval ${evaluation}).`
+      : `Opponent played ${actualMove}. Engine best move: ${prevBest} (eval ${evaluation}).`;
+  logger.info(`prompt: ${prompt}`);
   const chat = await openai.chat.completions.create({
     model: 'openai/gpt-4.1-nano',
     messages: [
       { role: 'system',   content: [
-        "You're my chess coach, like Chess.com's AI Coach.",
-        "Each move alternates strictly between me and my opponent.",
-        "Explicitly say 'You' when addressing my moves, and 'Your opponent' when addressing theirs.",
-        "Give exactly two short lines per response:",
-        "1) Describe clearly what was played (e.g., 'You played e4.', 'Your opponent played e5.').",
-        "2) If the move matches engine suggestion, briefly praise it and explain why it's good (mention eval). If not, state the better move clearly and briefly explain why (mention eval).",
-        "Highlight clear blunders if eval difference is large (±2.0 or more).",
-        "Stay under 40 words total."
-      ].join(" ") },
+          "You're my chess coach, like Chess.com's AI Coach.",
+          "Each move alternates strictly between me and my opponent.",
+          "Explicitly say 'You' when addressing my moves, and 'Your opponent' when addressing theirs.",
+          "Give exactly two short lines per response:",
+          "1) Describe clearly what was played (e.g., 'You played e4.', 'Your opponent played e5.').",
+          "2) If the move matches engine suggestion, briefly praise it and explain why it's good (mention eval). If not, state the better move clearly and briefly explain why (mention eval).",
+          "Highlight clear blunders if eval difference is large (±2.0 or more).",
+          "Stay under 40 words total."
+        ].join(" ") },
       { role: 'user', content: prompt }
     ],
     max_tokens: 120,

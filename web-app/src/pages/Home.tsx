@@ -16,19 +16,19 @@ const Home: React.FC = () => {
   const [hasPGN, setHasPGN] = useState(false);
   const replay = useChessReplay(pgn);
   const coach = useCoachAnalysis();
-  const preloadedMoves = usePreloadAnalysis();
+  const {result: preloadedMoves} = usePreloadAnalysis();
   const boardHeight = 400;
 
   const handlePGNSubmit = (newPgn: string) => {
     setPgn(newPgn);
     setHasPGN(true);
-    preloadedMoves.fetchPreloadedMoves(newPgn);
+    // preloadedMoves.fetchPreloadedMoves(newPgn);
   };
 
-  useEffect(() => {
-    console.log('preloadedMoves', preloadedMoves.result);
+  // useEffect(() => {
+  //   console.log('preloadedMoves', preloadedMoves.result);
 
-  }, [preloadedMoves.loading, preloadedMoves.result]);
+  // }, [preloadedMoves.loading, preloadedMoves.result]);
 
   // keyboard navigation
   useEffect(() => {
@@ -107,7 +107,7 @@ const Home: React.FC = () => {
           <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
             <div style={{ width: boardHeight, height: boardHeight }}>
               <ChessBoardViewer
-                moves={preloadedMoves.result?.preloadedMoves  || []}
+                moves={[]}
                 fen={replay.fen} 
                 whitePlayer={whitePlayer} 
                 blackPlayer={blackPlayer} 

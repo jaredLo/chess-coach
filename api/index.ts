@@ -52,7 +52,7 @@ app.post('/preload', async (req: any, res: any) => {
     }
 });
 
-
+let prompts: string[] = [];
 app.post('/analyze', async (req: any, res: any) => {
   const { pgn, moveIndex, userColor, actualMove } = req.body;
   if (!pgn || moveIndex == null) return res.status(400).json({ error: 'pgn and moveIndex required' });
@@ -64,25 +64,29 @@ app.post('/analyze', async (req: any, res: any) => {
 
   const isUserMove = userColor === (moveIndex % 2 === 1 ? 'w' : 'b');
   const prompt = isUserMove
-      ? `I played ${actualMove}. Engine best move: ${prevBest} (eval ${evaluation}).`
-      : `Opponent played ${actualMove}. Engine best move: ${prevBest} (eval ${evaluation}).`;
-  logger.info(`prompt: ${prompt}`);
+      ? `Move ${moveIndex}: I played ${actualMove}. Engine best move: ${prevBest} (eval ${evaluation}).`
+      : `Move ${moveIndex}: Opponent played ${actualMove}. Engine best move: ${prevBest} (eval ${evaluation}).`;
+  
+  prompts.push(prompt);
+  const combinedPrompt = prompts.join("\n");
+  logger.info(`prompt: ${combinedPrompt}`);
   const chat = await openai.chat.completions.create({
     model: 'openai/gpt-4.1-nano',
     messages: [
       { role: 'system',   content: [
-          "You're my chess coach, like Chess.com's AI Coach.",
-          "Each move alternates strictly between me and my opponent.",
-          "Explicitly say 'You' when addressing my moves, and 'Your opponent' when addressing theirs.",
-          "Give exactly two short lines per response:",
-          "1) Describe clearly what was played (e.g., 'You played e4.', 'Your opponent played e5.').",
-          "2) If the move matches engine suggestion, briefly praise it and explain why it's good (mention eval). If not, state the better move clearly and briefly explain why (mention eval).",
-          "Highlight clear blunders if eval difference is large (±2.0 or more).",
-          "Stay under 40 words total."
-        ].join(" ") },
-      { role: 'user', content: prompt }
+        "You're my chess coach, like Chess.com's AI Coach.",
+        "Each move alternates strictly between me and my opponent.",
+        "Explicitly say 'You' when addressing my moves, and 'Your opponent' when addressing theirs.",
+        "Give exactly two short lines per response:",
+        "1) Describe clearly what was played (e.g., 'You played e4.', 'Your opponent played e5.').",
+        "2) If the move matches engine suggestion, briefly praise it and explain why it's good (mention eval). If not, state the better move clearly and briefly explain why (mention eval).",
+        "Highlight clear blunders if eval difference is large (±2.0 or more).",
+        `Only comment on the move ${moveIndex}, but use previous moves to understand the context.`,
+        "Stay under 40 words total."
+      ].join(" ") },
+      { role: 'user', content: combinedPrompt }
     ],
-    max_tokens: 120,
+    max_tokens: 500,
   });
 
   res.json({ input: { pgn, fen: currFEN }, stockfish: { bestMove: prevBest, eval: evaluation }, advice: chat.choices[0].message?.content });
